@@ -4,6 +4,7 @@ Kuba Calik
 ICS-3U1
 Submitted to Mr.Ferreira
 """
+#Initialize libraries and pygame screen
 import math
 import pygame
 import random
@@ -96,6 +97,7 @@ class Bullet(pygame.sprite.Sprite):
 
         self.rect = pygame.Rect(x, y, 16, 16)
 
+    #Update the bullet according to the direction shot from
     def update(self, tiles):
         if self.direction == "up":
             self.rect.y -= self.speed
@@ -155,7 +157,7 @@ class Enemy(pygame.sprite.Sprite):
         distance_y = player.y - self.y
         self.angle = math.atan2(distance_y, distance_x)
 
-        #Move enemy in x-axis and determine collisions
+        #Update the enemies' rect position and factor in collisions (x-axis)
         self.x += self.speed * math.cos(self.angle)
         self.rect.x = self.x
         
@@ -167,7 +169,7 @@ class Enemy(pygame.sprite.Sprite):
                     self.rect.left = tile.right
                 self.x = self.rect.x
 
-        #Move enemy in y-axis and determine collisions   
+        #Update the enemies' rect position and factor in collisions (y-axis)  
         self.y += self.speed * math.sin(self.angle)
         self.rect.y = self.y
 
@@ -179,7 +181,7 @@ class Enemy(pygame.sprite.Sprite):
                     self.rect.top = tile.bottom
                 self.y = self.rect.y
 
-#Create Floor Garbage Class
+#Create Garbage Class
 class Rubbage(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
@@ -192,13 +194,14 @@ class Rubbage(pygame.sprite.Sprite):
     def display(self):
         display_screen.blit(self.image, (self.x, self.y))
 
-#Load sound effects and music track
+#Load sound effects and music tracks
 game_music = pygame.mixer.music.load("Contents/Audio/game.mp3")
 sound_effects = [
     pygame.mixer.Sound("Contents/Audio/crunch.wav"),
     pygame.mixer.Sound("Contents/Audio/death.mp3"),
     pygame.mixer.Sound("Contents/Audio/startup.mp3")
 ]
+sound_effects[2].play()
 
 #Render Tiles (check each row and column and extract its number to a corresponding sprite)
 tiles = {
@@ -237,8 +240,8 @@ bullet_speed = 3
 gamestate = "title"
 shot_delay = 25
 tile_size = 32
-wave_count = 32
-universal_waves = 32
+wave_count = 28
+universal_waves = 28
 
 SPAWNEVENT = pygame.USEREVENT + 0
 pygame.time.set_timer(SPAWNEVENT, 1500)
@@ -272,8 +275,31 @@ def Game_Over():
     display_screen.blit(gameover, (110, 115))
     screen.blit(pygame.transform.scale(display_screen, (600, 600)), (0, 0))
     pygame.display.update()
-    
-sound_effects[2].play()
+
+def Cleanup():
+    for i in [enemies_group, rubbage_group, bullets_group]:
+        for v in i:
+            v.kill()
+
+def Next_Level():
+    screen.fill((0, 0, 0))
+    title_card = pygame.image.load("Contents/Interface/title.png").convert_alpha()
+    if level == 4:
+        finish_message = font.render("You completed all the levels!", True, (255, 255, 255))
+        prompt_close = pygame.font.Font("Contents/Interface/valley.ttf", 14).render("Hit 'R' to Reset to Title!", True, (255, 255, 255))
+        display_screen.blit(finish_message, (65, 275))
+        display_screen.blit(prompt_close, (95, 175))
+    else:
+        win_message = font.render("Level Survived!", True, (255, 255, 255))
+        counter = pygame.font.Font("Contents/Interface/valley.ttf", 14).render("Level " + str(level) + "/3", True, (255, 255, 255))
+        prompt = pygame.font.Font("Contents/Interface/valley.ttf", 14).render("Press Enter To Continue!", True, (255, 255, 255))
+        display_screen.blit(prompt, (85, 255))
+        display_screen.blit(win_message, (100, 275))
+        display_screen.blit(counter, (125, 175))
+    display_screen.blit(title_card, (105, 100))
+    screen.blit(pygame.transform.scale(display_screen, (600, 600)), (0, 0))
+    pygame.display.update()
+
 #Start the Game Loop
 while running:
     movement = [0, 0]
@@ -282,6 +308,7 @@ while running:
 
     keys = pygame.key.get_pressed()
 
+    #Capture events and update the game accordingly
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
@@ -290,9 +317,9 @@ while running:
                 enemies_group.add(Enemy())
             wave_count -= 1
 
-        #Close if user hits escape
-        if keys[pygame.K_ESCAPE]:
-            pygame.quit()
+    #Close if user hits escape
+    if keys[pygame.K_ESCAPE]:
+        pygame.quit()
 
     #Game State Checking
     if gamestate == "title":
@@ -300,6 +327,19 @@ while running:
         if keys[pygame.K_RETURN]:
             gamestate = "game"
             player = Player(145, 115, 1)  
+            
+    if gamestate == "clear":
+        if level != 4:
+            Next_Level()
+            if keys[pygame.K_RETURN]:
+                gamestate = "game"
+                player = Player(145, 115, 1)  
+        elif level == 4:
+            Next_Level()
+            if  keys[pygame.K_r]:
+                gamestate = "title"
+                level = 1
+
     elif gamestate == "game":
         if not pygame.mixer.music.get_busy():
             pygame.mixer.music.play(-1)
@@ -356,6 +396,7 @@ while running:
         for enemy in enemies_group:
             enemy.update(tile_rects)
             enemy.display()
+
         #If a collision occurs, clean the game and reset the player
             if enemy.rect.colliderect(player.rect):
                 pygame.mixer.music.stop()
@@ -363,9 +404,7 @@ while running:
                 level = 1
                 Game_Over()
                 wave_count = universal_waves
-                for i in [enemies_group, rubbage_group]:
-                    for v in i:
-                        v.kill()
+                Cleanup()
                 gamestate = "title"
                 pygame.time.delay(3000)
 
@@ -377,18 +416,12 @@ while running:
         print(wave_count)
 
         #Detects the current wave number and check if player has won
-        if wave_count >= 31:
+        if wave_count >= (universal_waves - 1):
             Tutorial()
         if wave_count == 0:
-            if level != 3:
-                wave_count = universal_waves
-                level += 1
-            else:
-                pygame.quit() #Add a congratulatory message here
-            for i in [enemies_group, rubbage_group]:
-                for v in i:
-                    v.kill()
-            gamestate = "title"
+            wave_count, level = universal_waves, level + 1
+            Cleanup()
+            gamestate = "clear"
 
         screen.blit(pygame.transform.scale(display_screen, screen.get_size()), (0, 0))
         pygame.display.update()

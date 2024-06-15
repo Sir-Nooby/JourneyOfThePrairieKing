@@ -240,8 +240,8 @@ bullet_speed = 3
 gamestate = "title"
 shot_delay = 25
 tile_size = 32
-wave_count = 28
-universal_waves = 28
+wave_count = 26
+universal_waves = 26
 
 SPAWNEVENT = pygame.USEREVENT + 0
 pygame.time.set_timer(SPAWNEVENT, 1500)
@@ -285,6 +285,7 @@ def Next_Level():
     screen.fill((0, 0, 0))
     title_card = pygame.image.load("Contents/Interface/title.png").convert_alpha()
     if level == 4:
+        pygame.mixer.music.stop()
         finish_message = font.render("You completed all the levels!", True, (255, 255, 255))
         prompt_close = pygame.font.Font("Contents/Interface/valley.ttf", 14).render("Hit 'R' to Reset to Title!", True, (255, 255, 255))
         display_screen.blit(finish_message, (65, 275))
